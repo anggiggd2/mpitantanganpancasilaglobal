@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Report Text - Interactive Media</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap');
+
+        /* RESET & LETTERBOX SETUP */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        
+        body, html { 
+            width: 100vw; height: 100vh; overflow: hidden; 
+            background-color: #111; 
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Container Pengunci Rasio 16:9 Absolut */
+        .app-container {
+            width: 100vw; height: 56.25vw; 
+            max-height: 100vh; max-width: 177.78vh; 
+            background-image: url('assets/bg.jpg'); 
+            background-size: cover; background-position: center bottom; background-repeat: no-repeat;
+            position: relative; color: #333; overflow: hidden;
+            container-type: size; 
+            box-shadow: 0 0 3cqh rgba(0,0,0,0.8); 
+        }
+
+        /* Overlay Transparan Halus */
+        .app-container::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 100%);
+            z-index: 0; pointer-events: none;
+        }
+
+        /* Earthquake Animation */
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            10%, 30%, 50%, 70%, 90% { transform: translate(-.4cqw, -.4cqh) rotate(-1deg); }
+            20%, 40%, 60%, 80% { transform: translate(.4cqw, .4cqh) rotate(1deg); }
+        }
+        .shake-effect { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+
+        /* Page Control */
+        .page {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            padding: 3cqh 5cqw; display: none; flex-direction: column;
+            justify-content: center; align-items: center;
+            animation: fadeIn 0.4s ease-in-out; z-index: 1;
+        }
+        .page.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+        /* General UI Elements */
+        .content-center { text-align: center; color: #fff; width: 100%; max-width: 80cqw; margin-top: -3cqh;}
+        
+        .title-anim { font-size: 6cqh; margin-bottom: 2cqh; line-height: 1.2; text-shadow: 0 .4cqh 1cqh rgba(0,0,0,0.8), 0 .1cqh .2cqh rgba(0,0,0,1);}
+        .title-anim span { color: #ffdd59; text-transform: uppercase; font-size: 8cqh; }
+        .page-title { text-align: center; color: #fff; font-size: 5cqh; margin-bottom: 2cqh; text-shadow: 0 .3cqh .8cqh rgba(0,0,0,0.8); font-weight: 800;}
+        
+        .input-name {
+            padding: 1.5cqh 2cqw; font-size: 2.5cqh; border-radius: 1.5cqh; border: none;
+            outline: none; margin-bottom: 2cqh; text-align: center; width: 50cqw; max-width: 40cqw;
+            background: rgba(255,255,255,0.9); font-weight: bold; box-shadow: inset 0 .3cqh .5cqh rgba(0,0,0,0.2), 0 .5cqh 1cqh rgba(0,0,0,0.4);
+        }
+        .input-name:focus { background: #fff; box-shadow: inset 0 .3cqh .5cqh rgba(0,0,0,0.1), 0 0 1cqh #ffdd59; }
+
+        /* Pemilihan Karakter */
+        .avatar-container { display: flex; justify-content: center; gap: 4cqw; margin-bottom: 3cqh; }
+        .avatar-btn { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: 0.2s; }
+        .avatar-btn img {
+            width: 10cqh; height: 10cqh; border-radius: 50%; object-fit: cover; 
+            border: .4cqh solid rgba(255,255,255,0.5); box-shadow: 0 .5cqh 1cqh rgba(0,0,0,0.5); 
+            transition: 0.2s; background: rgba(255,255,255,0.8);
+        }
+        .avatar-btn p { margin-top: 1cqh; font-size: 2cqh; font-weight: 800; color: #fff; text-shadow: 0 .2cqh .4cqh rgba(0,0,0,0.8); transition: 0.2s;}
+        .avatar-btn:hover img { transform: scale(1.1); border-color: #ffdd59; }
+        .avatar-btn.selected img { transform: scale(1.15); border-color: #05c46b; box-shadow: 0 0 2cqh #05c46b; }
+        .avatar-btn.selected p { color: #0be881; text-shadow: 0 0 1cqh #000; transform: scale(1.1);}
+        .avatar-selection-img { width: 18cqh !important; height: 18cqh !important; border-width: .6cqh !important; }
+
+        /* HUD Profil & Timer */
+        .profile-hud {
+            position: absolute; top: 3cqh; right: 3cqw; display: none; align-items: center; gap: 1cqw;
+            background: rgba(255, 255, 255, 0.9); padding: .5cqh 1.5cqw .5cqh .5cqh; border-radius: 5cqh;
+            box-shadow: 0 .5cqh 1cqh rgba(0,0,0,0.4); border: .2cqh solid #fff; z-index: 100; backdrop-filter: blur(5px);
+        }
+        .profile-hud img { width: 5cqh; height: 5cqh; border-radius: 50%; object-fit: cover; border: .2cqh solid #3c40c6; background: #ecf0f1;}
+        .profile-hud span { font-size: 2cqh; font-weight: 800; color: #3c40c6; }
+
+        .hud-container { position: absolute; top: 3cqh; left: 3cqw; display: flex; gap: 1cqw; z-index: 100; }
+        .hud-box {
+            background: rgba(255, 221, 89, 0.9); color: #333; padding: 1cqh 2cqw;
+            font-size: 2.5cqh; font-weight: 800; border-radius: 5cqh; backdrop-filter: blur(5px);
+            box-shadow: 0 .5cqh 1cqh rgba(0,0,0,0.4); border: .2cqh solid #fff; display: none; transition: 0.2s;
+        }
+        #timer-hud { background: rgba(255, 94, 87, 0.9); color: white; }
+
+        /* Karakter Besar di Sisi Kiri */
+        #global-character-container {
+            position: absolute; bottom: 0; left: 2cqw; width: 32cqw; height: 90cqh; 
+            z-index: 2; display: none; align-items: flex-end; justify-content: center; pointer-events: none; 
+        }
+        #global-character-img {
+            width: 100%; height: 100%; object-fit: contain; object-position: bottom center;
+            filter: drop-shadow(0 1cqh 2cqh rgba(0,0,0,0.6));
+        }
+
+        /* Layout Khusus Karakter */
+        .page-has-char { align-items: flex-end !important; padding-right: 4cqw !important; }
+        .page-has-char > .content-center,
+        .page-has-char > .page-title,
+        .page-has-char > .content-box,
+        .page-has-char > .nav-bar,
+        .page-has-char > .certificate-wrapper {
+            width: 62cqw !important; max-width: 62cqw !important;
+        }
+        .page-has-char .level-btn { max-width: 100% !important; }
+
+        /* --- DESAIN TOMBOL GAMBAR OFFLINE (PENGGANTI TOMBOL LAMA) --- */
+        .nav-bar { width: 100%; max-width: 90cqw; display: flex; justify-content: space-between; margin-top: 2cqh; gap: 2cqw; align-items: center;}
+        
+        .img-nav-btn {
+            height: 12cqh!important; /* Ukuran proporsional untuk tombol navigasi */
+            width: auto;
+            object-fit: contain;
+            cursor: pointer;
+            border-radius: 1.5cqh; /* Sedikit melengkung agar estetik */
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    
+        }
+        .img-nav-btn:hover {
+            transform: translateY(-.5cqh) scale(1.05);
+        }
+        .img-nav-btn:active {
+            transform: translateY(0) scale(0.95);
+        }
+
+        /* Tombol Sound Melayang (Global) */
+        #global-sound-btn {
+            position: absolute;
+            bottom: 3cqh;
+            left: 3cqw;
+            z-index: 1000;
+            height: 8cqh; /* Sedikit lebih besar agar mudah dijangkau */
+            border-radius: 50%; /* Dibuat bulat */
+        }
+
+        /* DESAIN MENU ICON */
+        .menu-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 4cqw 3cqw; width: 100%; max-width: 90cqw; margin-top: 1cqh;}
+        .menu-item { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: transparent; border: none; cursor: pointer; width: 25cqw; max-width: 16cqw; transition: transform 0.3s ease;}
+        .menu-item:hover { transform: translateY(-1cqh) scale(1.05); }
+        .menu-item img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 3cqh; margin-bottom: 1.5cqh; transition: box-shadow 0.3s ease;}
+        .menu-item:hover img { transition: box-shadow 0.5s ease; }
+        .menu-item h3 { font-size: 2.2cqh; color: #fff; margin: 0; font-weight: 600; text-align: center; text-shadow: 0 0.3cqh 0.6cqh rgba(0,0,0,0.9); transition: color 0.3s ease;}
+        .menu-item:hover h3 { color: #ffdd59; }
+
+        /* Content Box */
+        .content-box {
+            background: rgba(31, 27, 27, 0.85); padding: 3.5cqh 4cqw; border-radius: 2cqh; 
+            width: 100%; height: 65cqh; display: flex; flex-direction: column; justify-content: flex-start;
+            box-shadow: 0 1cqh 3cqh rgba(0,0,0,0.4); overflow-y: auto; overflow-x: hidden;
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.6);
+        }
+        
+        .content-box h3 { color: #c23616; border-bottom: .3cqh solid #e84118; display: inline-block; padding-bottom: .8cqh; margin-bottom: 1.5cqh; font-size: 2.8cqh;}
+        .content-box p, .content-box li { font-size: 2.1cqh; line-height: 1.6; margin-bottom: 1.5cqh; color: #ffffff; font-weight: 500;}
+        .content-box ul, .content-box ol { margin-left: 3cqw; margin-bottom: 2cqh;}
+        .img-logo { height: 18cqh; margin-bottom: 2cqh; object-fit: contain; filter: drop-shadow(0 1cqh 1cqh rgba(0,0,0,0.4)); }
+
+        /* Teks Analisis & Tabs */
+        .text-analysis { border-left: .8cqw solid #3c40c6; background: rgba(241, 242, 246, 0.8); padding: 2cqh 2cqw; border-radius: 0 1cqh 1cqh 0; margin-bottom: 1.5cqh;}
+        .text-analysis p { font-size: 1.8cqh; line-height: 1.5; margin-bottom: 0; color: #2d3436;}
+        .structure-label { font-weight: 800; color: #3c40c6; margin-bottom: 1cqh; text-transform: uppercase; font-size: 1.6cqh;}
+
+        .tab-container { display: flex; gap: 1cqw; justify-content: center; margin-bottom: 2cqh; flex-wrap: wrap;}
+        .tab-btn { background: rgba(210, 218, 226, 0.8); border: none; padding: 1cqh 2cqw; border-radius: 1cqh; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 2cqh; color: #333; flex-grow: 1; box-shadow: 0 .4cqh 0 #a4b0be;}
+        .tab-btn:active { transform: translateY(.4cqh); box-shadow: 0 0 0 #a4b0be; }
+        .tab-btn.active { background: #3c40c6; color: white; box-shadow: 0 .4cqh 0 #1e2068; transform: translateY(0);}
+
+        /* Scrollbar */
+        .content-box::-webkit-scrollbar, .tab-content::-webkit-scrollbar { width: .8cqw; }
+        .content-box::-webkit-scrollbar-track, .tab-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 1cqh; }
+        .content-box::-webkit-scrollbar-thumb, .tab-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.3); border-radius: 1cqh; }
+
+        /* GAMES UI */
+        .level-btn {
+            display: flex; justify-content: space-between; align-items: center; width: 100%; margin: 2cqh auto; padding: 2.5cqh 3cqw;
+            font-size: 2.5cqh; font-weight: bold; border-radius: 1.5cqh; color: white; text-shadow: 0 .2cqh .2cqh rgba(0,0,0,0.3);
+            box-shadow: 0 .8cqh 0 rgba(0,0,0,0.2), 0 1cqh 2cqh rgba(0,0,0,0.3); border: none; cursor: pointer; transition: 0.1s;
+        }
+        .level-btn:active { transform: translateY(.8cqh); box-shadow: 0 0 0 rgba(0,0,0,0.2); }
+        .lvl-1 { background: linear-gradient(145deg, #0be881, #05c46b); box-shadow: 0 .8cqh 0 #049551; } 
+        .lvl-2 { background: linear-gradient(145deg, #575fcf, #3c40c6); box-shadow: 0 .8cqh 0 #1e2068; } 
+        .lvl-3 { background: linear-gradient(145deg, #ff5e57, #ff3f34); box-shadow: 0 .8cqh 0 #c92f25; } 
+        .status-badge { font-size: 1.8cqh; background: rgba(0,0,0,0.3); padding: .8cqh 1.5cqw; border-radius: 3cqh; }
+
+        .match-container { display: flex; justify-content: space-between; height: 100%; gap: 2cqw;}
+        .match-column { display: flex; flex-direction: column; justify-content: space-around; width: 48%; }
+        .match-item {
+            background: rgba(210, 218, 226, 0.9); padding: 1.5cqh 1cqw; border-radius: 1.2cqh; text-align: center; box-shadow: 0 .4cqh 0 #a4b0be;
+            font-weight: bold; cursor: pointer; transition: 0.1s; border: .2cqh solid transparent; font-size: 2cqh;
+        }
+        .match-item:active { transform: translateY(.4cqh); box-shadow: 0 0 0 #a4b0be; }
+        .match-item.selected { border-color: #3c40c6; background: #fff2cc; transform: scale(1.02); }
+        .match-item.matched { background: #05c46b; color: white; cursor: default; opacity: 0.7; box-shadow: none; transform: none;}
+
+        .passage-box { background: rgba(241, 242, 246, 0.8); padding: 2cqh 2cqw; border-left: .8cqw solid #ffa801; border-radius: 1cqh; font-style: italic; font-size: 2cqh; margin-bottom: 2cqh; font-weight: 600;}
+        .question-box { background: white; padding: 2cqh; border-radius: 1.5cqh; box-shadow: inset 0 .3cqh .5cqh rgba(0,0,0,0.1); text-align: center; font-size: 2.4cqh; font-weight: 800; color: #1e272e; margin-bottom: 2cqh;}
+        
+        .options-container { display: flex; flex-direction: column; gap: 1.5cqh; }
+        .option-btn { background: #3c40c6; color: white; padding: 2cqh 2cqw; border-radius: 1cqh; font-size: 2cqh; transition: 0.2s; text-align: left; box-shadow: 0 .4cqh 0 #1e2068; cursor:pointer; border:none;}
+        .option-btn:active { transform: translateY(.4cqh); box-shadow: 0 0 0 #1e2068; }
+        
+        .tf-container { display: flex; justify-content: center; gap: 3cqw; align-items: center; padding: 2cqh 0;}
+        .tf-btn { width: 45%; max-width: 25cqw; padding: 2cqh; font-size: 2.4cqh; font-weight: 800; border-radius: 1.5cqh; color: white; text-shadow: 0 .2cqh .2cqh rgba(0,0,0,0.3); border:none; cursor:pointer; transition:0.1s;}
+        .btn-true { background: #05c46b; box-shadow: 0 .6cqh 0 #049551; } .btn-true:active { transform: translateY(.6cqh); box-shadow: 0 0 0 #049551; }
+        .btn-false { background: #ff3f34; box-shadow: 0 .6cqh 0 #c92f25; } .btn-false:active { transform: translateY(.6cqh); box-shadow: 0 0 0 #c92f25; }
+
+        .score-screen { text-align: center; margin: auto; }
+        .score-text { font-size: 12cqh; color: #ff3f34; font-weight: 800; text-shadow: 0 .5cqh 1cqh rgba(0,0,0,0.2);}
+
+        /* SIMULATOR UI */
+        .sim-container { display: flex; gap: 2cqw; height: 100%; min-height: 40cqh; }
+        .sim-controls { display: flex; flex-direction: column; gap: 2cqh; width: 35%;}
+        .sim-btn { padding: 2cqh; font-size: 2cqh; font-weight: bold; border-radius: 1cqh; background: rgba(210, 218, 226, 0.9); color: #1e272e; box-shadow: 0 .4cqh 0 #a4b0be; cursor:pointer; border:none; transition:0.1s;}
+        .sim-btn:active { transform: translateY(.4cqh); box-shadow: 0 0 0 #a4b0be; }
+        .sim-btn.active { background: #3c40c6; color: white; box-shadow: 0 .4cqh 0 #1e2068; }
+        
+        .sim-display { display: flex; flex-direction: column; gap: 2cqh; width: 65%;}
+        .sim-visual { flex-grow: 1; background: rgba(236, 240, 241, 0.9); border-radius: 1.5cqh; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; border: .3cqh solid rgba(0,0,0,0.1); box-shadow: inset 0 .5cqh 1cqh rgba(0,0,0,0.2);}
+        .sim-text { background: rgba(121, 121, 116, 0.9); padding: 2cqh; border-radius: 1.5cqh; border-left: .8cqw solid #0fb9b1; box-shadow: 0 .4cqh .8cqh rgba(0,0,0,0.1); }
+        .sim-text h4 { color: #f9eb25; margin-bottom: 1cqh; font-size: 2cqh; font-weight: 800;}
+        .sim-text p { font-size: 1.8cqh; font-weight: 600;}
+
+        /* Simulator Animations */
+        .earth-block { width: 12cqw; height: 12cqh; background: #8e44ad; margin: 1cqw; border-radius: 1cqh; }
+        .shaking { animation: shakeAnim 0.5s infinite; }
+        @keyframes shakeAnim { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-.4cqw, .4cqh); } 50% { transform: translate(.4cqw, -.4cqh); } }
+        
+        .tsunami-wrapper { position: absolute; bottom: 2cqh; width: 100%; height: 0; transition: height 2s ease-in-out; background: #0984e3; z-index: 5; }
+        .tsunami-wrapper.active { height: 75%; }
+        .wave-crest { width: 200%; height: 4cqh; position: absolute; top: -3.8cqh; left: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath fill='%230984e3' d='M0,42 C150,110 300,110 450,42 C600,-25 750,-25 900,42 C1050,110 1200,110 1350,42 L1350,120 L0,120 Z' /%3E%3C/svg%3E"); background-size: 50% 100%; animation: moveWave 2s linear infinite; }
+        @keyframes moveWave { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .boat-container { position: absolute; bottom: 100%; left: 35%; transform-origin: bottom center; animation: boatBob 1.5s ease-in-out infinite; }
+        @keyframes boatBob { 0%, 100% { transform: translateY(0.5cqh) rotate(-5deg); } 50% { transform: translateY(-1.5cqh) rotate(5deg); } }
+
+        .mountain { border-left: 10cqw solid transparent; border-right: 10cqw solid transparent; border-bottom: 20cqh solid #d35400; position: absolute; bottom: 3cqh;}
+        .magma { width: 3cqh; height: 3cqh; background: #e74c3c; border-radius: 50%; position: absolute; bottom: 20cqh; opacity: 0; }
+        .magma.active { animation: eruptAnim 1.5s infinite ease-out; }
+        @keyframes eruptAnim { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-15cqh) scale(4); opacity: 0; } }
+        
+        /* CERTIFICATE UI */
+        .certificate-wrapper { background: white; padding: 1.5cqh; border-radius: 1.5cqh; margin: 0 auto; box-shadow: 0 1cqh 3cqh rgba(0,0,0,0.5); }
+        .certificate-inner { border: 1cqh double #bdc3c7; padding: 4cqh 4cqw; text-align: center; background: linear-gradient(to bottom, #ffffff, #fdfbfb); }
+        .cert-header { font-family: 'Playfair Display', serif; font-size: 4cqh; color: #2c3e50; font-weight: 800;}
+        .cert-name { font-family: 'Playfair Display', serif; font-size: 6cqh; color: #c0392b; margin: 2cqh 0; font-style: italic; border-bottom: .4cqh solid #c0392b; display: inline-block; padding: 0 3cqw;}
+        .cert-score-box { background: #f1f2f6; display: inline-block; padding: 2cqh 4cqw; border-radius: 1.5cqh; border: .3cqh dashed #bdc3c7; margin-top: 1cqh;}
+        .cert-score-number { font-size: 8cqh; font-weight: 800; color: #27ae60; line-height: 1;}
+
+    </style>
+</head>
+<body>
+<audio id="audio-click" src="assets/audio/click.mp3" preload="auto"></audio>
+<audio id="audio-bg" src="assets/audio/bg-music.mp3" loop preload="auto"></audio>
+<audio id="audio-wrong" src="assets/audio/wrong.mp3" preload="auto"></audio>
+<audio id="audio-correct" src="assets/audio/correct.mp3" preload="auto"></audio>
+
+    <div class="app-container" id="main-container">
+
+        <div class="hud-container">
+            <div id="timer-hud" class="hud-box">⏱️ <span id="timer-display">60s</span></div>
+            <div id="global-score-hud" class="hud-box">🏆 Pts: <span id="display-points">0</span></div>
+        </div>
+
+        <div id="profile-container" class="profile-hud">
+            <img id="display-avatar" src="" alt="avatar">
+            <span id="display-username-hud">Student</span>
+        </div>
+
+        <img id="global-sound-btn" src="assets/Soundon.png" class="img-nav-btn" onclick="toggleGlobalSound()" title="Toggle Sound" onerror="this.style.display='none'">
+
+        <div id="global-character-container">
+            <img id="global-character-img" src="" alt="character">
+        </div>
+
+
+        <section id="page-welcome" class="page active">
+            <div class="content-center">
+                <img src="assets/logo.png" alt="[Logo]" class="img-logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmZGQ1OSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjM1ZW0iIGZvbnQtc2l6ZT0iMjAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LWZhbWlseT0iQXJpYWwiIGZpbGw9IiMzMzMiPkxPR088L3RleHQ+PC9zdmc+'">
+                <h1 class="title-anim">Disaster Report Text<br><span>Explorer</span></h1>
+                
+                <p id="welcome-text" style="font-size: 2.2cqh; margin-bottom: 2cqh; font-weight: 600; text-shadow: 0 .2cqh .4cqh rgba(0,0,0,0.8);">Please enter your full name.</p>
+                <input type="text" id="username-input" class="input-name" placeholder="Type your name here..." autocomplete="off">
+                <br>
+                
+                <img src="assets/start.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="goToCharacterSelect()" style="height: 8cqh; margin-top: 1cqh;" alt="Next">
+                <br>
+                <button id="btn-reset" onclick="resetSave()" style="margin-top: 3cqh; background: rgba(0,0,0,0.5); color: #fff; padding: 1cqh 2cqw; border-radius: 2cqh; cursor: pointer; display: none; font-size: 1.6cqh; border: 1px solid #fff;">Reset Saved Data</button>
+            </div>
+        </section>
+
+        <section id="page-character" class="page">
+            <div class="content-center">
+                <h2 class="page-title" style="font-size: 5cqh; margin-bottom: 4cqh;">Select Your Character</h2>
+                
+                <div class="avatar-container" style="gap: 8cqw; margin-bottom: 5cqh;">
+                    <div class="avatar-btn" id="btn-boy" onmouseenter="playHoverSound()" onclick="selectAvatar('boy')">
+                        <img src="assets/boy.png" alt="Boy" class="avatar-selection-img" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'50\' fill=\'%233498db\'/><text x=\'50\' y=\'65\' font-size=\'50\' text-anchor=\'middle\' fill=\'white\'>👦</text></svg>'">
+                        <p style="font-size: 2.5cqh; margin-top: 1.5cqh;">Putra</p>
+                    </div>
+                    <div class="avatar-btn" id="btn-girl" onmouseenter="playHoverSound()" onclick="selectAvatar('girl')">
+                        <img src="assets/girl.png" alt="Girl" class="avatar-selection-img" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><circle cx=\'50\' cy=\'50\' r=\'50\' fill=\'%23e74c3c\'/><text x=\'50\' y=\'65\' font-size=\'50\' text-anchor=\'middle\' fill=\'white\'>👧</text></svg>'">
+                        <p style="font-size: 2.5cqh; margin-top: 1.5cqh;">Putri</p>
+                    </div>
+                </div>
+
+                <img src="assets/start.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="loginUser()" style="height: 8cqh;" alt="Enter">
+            </div>
+        </section>
+
+        <section id="page-home" class="page page-has-char">
+            <div class="content-center">
+                <h1 class="title-anim">Welcome,<br><span id="display-username">Student</span>!</h1>
+                <p style="font-size: 2.8cqh; margin-bottom: 4cqh; font-weight: 600; text-shadow: 0 .2cqh .4cqh rgba(0,0,0,0.8);">Ready to explore Natural Disasters?</p>
+                <img src="assets/start.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-menu')" style="height: 8cqh;" alt="Menu">
+            </div>
+        </section>
+
+        <section id="page-menu" class="page">
+            <h2 class="page-title">Main Menu</h2>
+            
+            <div class="menu-grid">
+                <div class="menu-item" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-objectives')">
+                    <img src="assets/objectives.png" alt="Objectives" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%\' height=\'100%\'><rect width=\'100%\' height=\'100%\' fill=\'%23575fcf\'/></svg>'">
+                    <h3>Objectives</h3>
+                </div>
+                <div class="menu-item" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-learn')">
+                    <img src="assets/material.png" alt="Material" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%\' height=\'100%\'><rect width=\'100%\' height=\'100%\' fill=\'%233c40c6\'/></svg>'">
+                    <h3>Learn</h3>
+                </div>
+                <div class="menu-item" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-example')">
+                    <img src="assets/examples.png" alt="Examples" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%\' height=\'100%\'><rect width=\'100%\' height=\'100%\' fill=\'%230fb9b1\'/></svg>'">
+                    <h3>Example</h3>
+                </div>
+                <div class="menu-item" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-sim')">
+                    <img src="assets/simulation.png" alt="Simulation" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%\' height=\'100%\'><rect width=\'100%\' height=\'100%\' fill=\'%23e15f41\'/></svg>'">
+                    <h3>Simulation</h3>
+                </div>
+                <div class="menu-item" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-exercise-menu')">
+                    <img src="assets/games.png" alt="Games" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%\' height=\'100%\'><rect width=\'100%\' height=\'100%\' fill=\'%2305c46b\'/></svg>'">
+                    <h3>Games</h3>
+                </div>
+                <div class="menu-item" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-guide')">
+                    <img src="assets/guide.png" alt="Guide" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%\' height=\'100%\'><rect width=\'100%\' height=\'100%\' fill=\'%23f39c12\'/></svg>'">
+                    <h3>User Guide</h3>
+                </div>
+                <div class="menu-item" onmouseenter="playHoverSound()" onclick="playClickSound(); generateCertificate()">
+                    <img src="assets/certificate.png" alt="Certificate" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%\' height=\'100%\'><rect width=\'100%\' height=\'100%\' fill=\'%23ffb8b8\'/></svg>'">
+                    <h3>Certificate</h3>
+                </div>
+            </div>
+
+            <div class="nav-bar" style="justify-content: center; margin-top: 4cqh;">
+                <img src="assets/Home.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-home')" alt="Home">
+            </div>
+        </section>
+
+        <section id="page-guide" class="page page-has-char">
+            <h2 class="page-title">User Guide</h2>
+            <div class="content-box">
+                <h3>Cara Menggunakan Media</h3>
+                <p>Selamat datang di Media Interaktif Disaster Report! Ikuti petunjuk berikut untuk pengalaman belajar terbaik:</p>
+                <ul>
+                    <li><b>Eksplorasi Materi:</b> Gunakan menu <i>Learn</i> dan <i>Example</i> untuk memahami struktur Report Text.</li>
+                    <li><b>Simulasi:</b> Klik menu <i>Simulation</i> untuk melihat bagaimana bencana alam terjadi secara visual.</li>
+                    <li><b>Sistem Poin:</b> Selesaikan tantangan di menu <i>Games</i> untuk mengumpulkan poin:
+                        <ul>
+                            <li>Level 1: Menjodohkan kosakata (10 poin/item).</li>
+                            <li>Level 2: Benar/Salah (20 poin/soal).</li>
+                            <li>Level 3: Kuis Pilihan Ganda (30 poin/soal).</li>
+                        </ul>
+                    </li>
+                    <li><b>Sertifikat:</b> Setelah menyelesaikan semua level, Anda dapat mencetak sertifikat di menu <i>Certificate</i>.</li>
+                    <li><b>Audio:</b> Klik ikon speaker di pojok kiri bawah untuk menyalakan/mematikan suara.</li>
+                </ul>
+            </div>
+            <div class="nav-bar">
+                <img src="assets/backtomenu.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-menu')" alt="Menu">
+            </div>
+        </section>
+
+        <section id="page-objectives" class="page page-has-char">
+            <h2 class="page-title">Tujuan Pembelajaran</h2>
+            <div class="content-box"><h3>Tujuan Pembelajaran</h3><ol><li><b>Menganalisis</b> fungsi sosial, struktur, dan unsur kebahasaan Report Text terkait fenomena alam.</li><li><b>Menemukan</b> informasi rinci, makna tersurat, dan makna tersirat mengenai Bencana Alam.</li><li><b>Mengaplikasikan</b> literasi mitigasi bencana ke dalam strategi keselamatan diri.</li></ol><div style="background: rgba(236, 204, 104, 0.5); padding: 2cqh; border-radius: 1cqh; color: #2f3640; font-weight: 800; text-align: center; margin-top:auto;">💡 Tips: Pelajari materi, lalu uji pemahamanmu di menu "Games"!</div></div>
+            <div class="nav-bar">
+                <img src="assets/backtomenu.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-menu')" alt="Menu">
+                <img src="assets/next.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-learn')" alt="Next">
+            </div>
+        </section>
+
+        <section id="page-learn" class="page page-has-char">
+            <h2 class="page-title">What is Report Text?</h2>
+            <div class="content-box"><div><h3>Definition</h3><p>Report text is a text that presents information about something as it is. It is a result of systematic observation and analysis. We focus on <b>Natural Disasters</b>.</p></div><div><h3>Generic Structure</h3><ul><li><b>General Classification:</b> Menjelaskan fenomena secara umum.</li><li><b>Description:</b> Mendeskripsikan detail karakteristik, penyebab, atau dampak fenomena.</li></ul></div><div><h3>Language Features</h3><ul><li><b>Simple Present Tense:</b> Menyatakan fakta ilmiah.</li><li><b>General Nouns:</b> Membahas objek secara universal.</li><li><b>Action Verbs:</b> Kata kerja tindakan.</li><li><b>Technical Terms:</b> Istilah ilmiah terkait bencana.</li></ul></div></div>
+            <div class="nav-bar">
+                <img src="assets/previous.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-objectives')" alt="Prev">
+                <img src="assets/backtomenu.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-menu')" alt="Menu">
+                <img src="assets/next.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-example')" alt="Next">
+            </div>
+        </section>
+
+<!-- ================== PAGE EXAMPLE (SIMULATOR STYLE) ================== -->
+<section id="page-example" class="page page-has-char">
+    <h2 class="page-title">Text Example</h2>
+
+    <div class="content-box">
+        <div class="sim-container">
+            
+            <!-- KIRI -->
+            <div class="sim-controls">
+                <button class="sim-btn" onclick="showExample('tsunami', this)">🌊 Tsunami</button>
+                <button class="sim-btn" onclick="showExample('earthquake', this)">🌍 Earthquake</button>
+                <button class="sim-btn" onclick="showExample('volcano', this)">🌋 Volcano</button>
+            </div>
+
+            <!-- KANAN -->
+            <div class="sim-display">
+                
+                <div class="sim-visual" id="example-visual">
+                    <p style="color:#7f8c8d; font-size:2cqh; font-weight:bold;">
+                        Select a topic to view example text
+                    </p>
+                </div>
+
+                <div class="sim-text" id="example-text">
+                    <h4>Text Explanation</h4>
+                    <p>Choose a disaster on the left.</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <img src="assets/previous.png" class="img-nav-btn" onclick="goToPage('page-learn')" alt="Prev">
+        <img src="assets/backtomenu.png" class="img-nav-btn" onclick="goToPage('page-menu')" alt="Menu">
+        <img src="assets/next.png" class="img-nav-btn" onclick="goToPage('page-sim')" alt="Next">
+    </div>
+</section>
+
+<!-- ================== SCRIPT ================== -->
+<script>
+const exampleData = {
+    tsunami: {
+        visual: "🌊",
+        title: "Tsunami",
+        text: `
+        Tsunami
+<b>A tsunami is a series of massive ocean waves caused by a sudden displacement of water. This natural phenomenon is typically triggered by underwater earthquakes, volcanic eruptions, or landslides. Unlike normal ocean waves driven by wind, tsunamis have extremely long wavelengths and can travel across entire oceans at speeds reaching up to 800 kilometers per hour. In the deep ocean, these waves are barely noticeable, but they gain height rapidly as they reach shallower waters near the coast.</b><br></br>
+
+<b>When a tsunami approaches the shore, it can appear as a rapidly rising tide or a literal wall of water that crashes into the land. The impact is often devastating, as the force of the water can destroy buildings, uproot trees, and sweep away everything in its path. To minimize the loss of life, many coastal regions now use sophisticated warning systems that detect seismic activity and changes in sea levels, allowing residents to evacuate to higher ground before the waves arrive.</b></br></br>
+        `
+    },
+
+    earthquake: {
+        visual: "🌍",
+        title: "Earthquake",
+        text: `
+        <b>An earthquake is a sudden shaking of the ground surface caused by the release of energy in the Earth's lithosphere that creates seismic waves. This phenomenon occurs when tectonic plates, which make up the Earth's outer shell, get stuck at their edges due to friction. When the stress on the edge overcomes the friction, an earthquake happens, releasing energy in waves that travel through the earth's crust. The location directly above where the earthquake starts underground is called the epicenter.</b><br></br>
+        
+        <b>Earthquakes are measured using an instrument called a seismograph, which records the intensity and duration of the vibrations. The magnitude of an earthquake is often reported using the Richter scale or the Moment Magnitude Scale; a higher number indicates a more powerful and potentially destructive event. While small earthquakes occur daily without being felt, large earthquakes can cause significant ground displacement, trigger tsunamis, and lead to the collapse of infrastructure, making earthquake-resistant engineering essential in high-risk zones.</b><br><br>       
+        `
+    },
+
+    volcano: {
+        visual: "🌋",
+        title: "Volcano",
+        text: `
+        <b>A volcanic eruption is a geological event that occurs when magma, gas, and other materials from the Earth's interior are forcefully ejected through a vent or fissure in the crust. This process is primarily driven by the movement of tectonic plates and the buildup of intense pressure deep underground. When the internal pressure becomes too great, the magma rises to the surface, transforming into lava once it is expelled. Eruptions can vary in intensity, ranging from gentle lava flows to massive, explosive blasts that send columns of ash high into the atmosphere.</b>><br><br>
+
+        <b>The aftermath of an eruption can have profound effects on both the environment and human settlements. Explosive eruptions often produce pyroclastic flows—fast-moving currents of hot gas and rock—and volcanic ash that can cover vast areas, disrupting air travel and affecting global climates. Despite their destructive potential, volcanic eruptions also play a crucial role in the Earth's ecosystem by creating new landforms and providing nutrient-rich soil that is highly beneficial for agriculture over long periods.</b>
+        `
+    }
+};
+
+function showExample(type, btn) {
+    if (typeof playClickSound === "function") playClickSound();
+
+    // reset tombol aktif
+    document.querySelectorAll('#page-example .sim-btn')
+        .forEach(b => b.classList.remove('active'));
+
+    btn.classList.add('active');
+
+    // tampilkan visual
+    document.getElementById('example-visual').innerHTML =
+        `<div style="font-size:10cqh;">${exampleData[type].visual}</div>`;
+
+    // tampilkan teks
+    document.getElementById('example-text').innerHTML =
+        `<h4>${exampleData[type].title}</h4><p>${exampleData[type].text}</p>`;
+}
+</script>
+
+        <section id="page-sim" class="page page-has-char">
+            <h2 class="page-title">Simulator</h2>
+            <div class="content-box">
+                <div class="sim-container">
+                    <div class="sim-controls">
+                        <button class="sim-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); runSim('gempa', this)">💥 Earthquake</button>
+                        <button class="sim-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); runSim('tsunami', this)">🌊 Tsunami</button>
+                        <button class="sim-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); runSim('erupsi', this)">🌋 Volcanic Eruption</button>
+                    </div>
+                    <div class="sim-display">
+                        <div class="sim-visual" id="visual-area"><p style="color: #7f8c8d; font-size: 2cqh; font-weight: bold;">Select a disaster to simulate</p></div>
+                        <div class="sim-text" id="text-area"><h4>Explanation & Mitigation</h4><p>Choose a category on the left to learn the science behind it.</p></div>
+                    </div>
+                </div>
+            </div>
+            <div class="nav-bar">
+                <img src="assets/previous.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-example')" alt="Prev">
+                <img src="assets/backtomenu.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-menu')" alt="Menu">
+                <img src="assets/next.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-exercise-menu')" alt="Next">
+            </div>
+        </section>
+
+        <section id="page-exercise-menu" class="page page-has-char">
+            <h2 class="page-title">Select Challenge</h2>
+            <div class="content-box" style="text-align: center; display: block;">
+                <p style="margin-bottom: 3cqh; font-weight:bold;">Kumpulkan maksimal 300 Poin! (Waktu berjalan)</p>
+                <button class="level-btn lvl-1" onmouseenter="playHoverSound()" onclick="playClickSound(); startLevel1()"><span>🌱 Lvl 1: Match Words</span> <span id="s-lvl1" class="status-badge">50 Pts</span></button>
+                <button class="level-btn lvl-2" onmouseenter="playHoverSound()" onclick="playClickSound(); startLevel2()"><span>🧭 Lvl 2: True/False</span> <span id="s-lvl2" class="status-badge">100 Pts</span></button>
+                <button class="level-btn lvl-3" onmouseenter="playHoverSound()" onclick="playClickSound(); startLevel3()"><span>🐉 Lvl 3: Quiz</span> <span id="s-lvl3" class="status-badge">150 Pts</span></button>
+            </div>
+            <div class="nav-bar" style="justify-content: center;">
+                <img src="assets/backtomenu.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-menu')" alt="Menu">
+            </div>
+        </section>
+
+        <section id="page-level-1" class="page page-has-char">
+            <h2 class="page-title">Level 1: Match Words</h2>
+            <div class="content-box" style="padding-top:1cqh;">
+                <p style="text-align: center; color:#333; font-weight:800; font-size:1.8cqh; margin-bottom:2cqh;">Klik kata Inggris lalu klik artinya!</p>
+                <div class="match-container"><div class="match-column" id="col-eng"></div><div class="match-column" id="col-ind"></div></div>
+                <div id="lvl1-done" style="display:none; text-align:center; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(255,255,255,0.95); padding:4cqh 5cqw; border-radius:2cqh; box-shadow:0 1cqh 3cqh rgba(0,0,0,0.5); z-index:10; width:80cqw; max-width:50cqw;">
+                    <h3 id="lvl1-msg" style="color:#05c46b; font-size:4cqh; border:none;">🎉 Level Cleared!</h3>
+                    <img src="assets/next.png" class="img-nav-btn" style="margin-top:3cqh;" onmouseenter="playHoverSound()" onclick="playClickSound(); endLevel('page-exercise-menu')" alt="Continue">
+                </div>
+            </div>
+            <div class="nav-bar" style="justify-content: center;">
+                <img src="assets/backtomenu.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); endLevel('page-exercise-menu')" alt="Abandon">
+            </div>
+        </section>
+
+        <section id="page-level-2" class="page page-has-char">
+            <h2 class="page-title">Level 2: True/False</h2>
+            <div class="content-box">
+                <div class="passage-box">"A tsunami is a giant wave usually caused by an earthquake beneath the ocean floor. The waves can travel as fast as a jet plane."</div>
+                <div id="lvl2-game-area" style="display:flex; flex-direction:column; flex-grow:1;">
+                    <div class="question-box" id="lvl2-question">Loading...</div>
+                    <div class="tf-container"><button class="tf-btn btn-true" onmouseenter="playHoverSound()" onclick="answerLvl2(true)">TRUE</button><button class="tf-btn btn-false" onmouseenter="playHoverSound()" onclick="answerLvl2(false)">FALSE</button></div>
+                </div>
+                <div id="lvl2-result" class="score-screen" style="display: none;">
+                    <h3 id="lvl2-msg" style="font-size: 4cqh; color: #3c40c6;">Level Completed!</h3>
+                    <div class="score-text" id="lvl2-score">0/5</div>
+                    <img src="assets/next.png" class="img-nav-btn" style="margin-top:3cqh;" onmouseenter="playHoverSound()" onclick="playClickSound(); endLevel('page-exercise-menu')" alt="Continue">
+                </div>
+            </div>
+            <div class="nav-bar" style="justify-content: center;">
+                <img src="assets/backtomenu.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); endLevel('page-exercise-menu')" alt="Abandon">
+            </div>
+        </section>
+
+        <section id="page-level-3" class="page page-has-char">
+            <h2 class="page-title">Level 3: Quiz</h2>
+            <div class="content-box">
+                <div class="passage-box">"A volcano is a mountain that opens downward to a pool of molten rock. When pressure builds up, eruptions occur."</div>
+                <div id="lvl3-game-area" style="display:flex; flex-direction:column; flex-grow:1;">
+                    <div class="question-box" id="lvl3-question">Loading...</div>
+                    <div class="options-container" id="lvl3-options"></div>
+                </div>
+                <div id="lvl3-result" class="score-screen" style="display: none;">
+                    <h3 id="lvl3-msg" style="font-size: 4cqh; color: #3c40c6;">Level Completed!</h3>
+                    <div class="score-text" id="lvl3-score">0/5</div>
+                    <img src="assets/next.png" class="img-nav-btn" style="margin-top:3cqh;" onmouseenter="playHoverSound()" onclick="playClickSound(); endLevel('page-exercise-menu')" alt="Continue">
+                </div>
+            </div>
+            <div class="nav-bar" style="justify-content: center;">
+                <img src="assets/backtomenu.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); endLevel('page-exercise-menu')" alt="Abandon">
+            </div>
+        </section>
+
+        <section id="page-certificate" class="page page-has-char">
+            <div class="certificate-wrapper">
+                <div class="certificate-inner">
+                    <div class="cert-header">Certificate of Achievement</div>
+                    <p class="cert-sub" style="margin-top: 1cqh;">Proudly presented to</p>
+                    <div class="cert-name" id="cert-display-name">Student Name</div>
+                    <p class="cert-desc" style="margin-top: 1cqh; font-weight: 500;">For demonstrating understanding in analyzing factual report texts.</p>
+                    <div class="cert-score-box">
+                        <div style="font-size: 1.6cqh; color: #7f8c8d; text-transform: uppercase;">Final Grade</div>
+                        <div class="cert-score-number" id="cert-display-score">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="nav-bar" style="justify-content: left; gap: 2cqw;">
+                <img src="assets/backtomenu.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); goToPage('page-menu')" alt="Menu">
+                <img src="assets/print.png" class="img-nav-btn" onmouseenter="playHoverSound()" onclick="playClickSound(); window.print()" alt="Print">
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        let username = ""; 
+        let userAvatar = ""; 
+        let totalPoints = 0; const MAX_POINTS = 300; let saves = { lvl1: false, lvl2: false, lvl3: false };
+
+        window.onload = () => {
+            const savedData = localStorage.getItem('disasterAppSave');
+            if(savedData) {
+                const data = JSON.parse(savedData); 
+                username = data.name; totalPoints = data.pts; saves = data.saves; 
+                userAvatar = data.avatar || 'boy';
+                
+                document.getElementById('username-input').value = username;
+                document.getElementById('welcome-text').innerText = "Welcome back! Click NEXT to resume.";
+                document.getElementById('btn-reset').style.display = 'inline-block';
+                
+                selectAvatar(userAvatar); 
+                updateMenuStatus(); updatePointsDisplay();
+            }
+        };
+
+        // --- SISTEM SUARA & TOGGLE GLOBAL SOUND ---
+        let audioCtx;
+        let isMuted = false;
+
+        function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if(audioCtx.state === 'suspended') { audioCtx.resume(); } }
+        
+        function playTone(freq, type, duration) { 
+            if(!audioCtx || isMuted) return; 
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); 
+            osc.type = type; osc.frequency.value = freq; osc.connect(gain); gain.connect(audioCtx.destination); 
+            osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration); osc.stop(audioCtx.currentTime + duration); 
+        }
+// Variable untuk status suara
+let isSoundOn = false; 
+
+// 1. Fungsi Efek Suara Klik
+function playClickSound() {
+    const clickSound = document.getElementById('audio-click');
+    // Jalankan hanya jika sound dalam keadaan ON
+    if (isSoundOn) {
+        clickSound.currentTime = 0; // Reset ke awal agar bisa diklik berkali-kali dengan cepat
+        clickSound.play();
+    }
+}
+
+// 2. Fungsi Background Musik On/Off
+function toggleGlobalSound() {
+    const bgMusic = document.getElementById('audio-bg');
+    const soundBtn = document.getElementById('global-sound-btn');
+    
+    isSoundOn = !isSoundOn; // Toggle status
+    
+    if (isSoundOn) {
+        bgMusic.play().catch(e => console.log("User must interact first"));
+        soundBtn.src = "assets/Soundon.png"; // Pastikan path gambar benar
+    } else {
+        bgMusic.pause();
+        soundBtn.src = "assets/Soundoff.png"; // Pastikan path gambar benar
+    }
+}
+
+// 3. Fungsi Suara Salah (Peringatan Bahasa Inggris)
+function playWrong() {
+    if (isSoundOn) {
+        const wrongSound = document.getElementById('audio-wrong');
+        wrongSound.currentTime = 0;
+        wrongSound.play();
+    }
+}
+
+// 4. Fungsi Suara Tepuk Tangan (Jawaban Benar)
+function playCorrect() {
+    if (isSoundOn) {
+        const correctSound = document.getElementById('audio-correct');
+        correctSound.currentTime = 0;
+        correctSound.play();
+    }
+}
+        // Logic Tombol Sound On/Off
+        function toggleGlobalSound() {
+            isMuted = !isMuted;
+            const soundBtn = document.getElementById('global-sound-btn');
+            if(isMuted) {
+                soundBtn.src = "assets/soundoff.png";
+            } else {
+                soundBtn.src = "assets/Soundon.png";
+                // Mainkan suara jika baru di-unmute sebagai indikator
+                if(!audioCtx) { initAudio(); }
+                setTimeout(() => playTone(600, 'triangle', 0.1), 100); 
+            }
+        }
+
+        function playHoverSound() { playTone(900, 'sine', 0.05); }
+        function playClickSound() { playTone(600, 'triangle', 0.1); setTimeout(() => playTone(800, 'triangle', 0.15), 100); }
+        function playCorrect() { playTone(600, 'sine', 0.1); setTimeout(()=>playTone(800, 'sine', 0.2), 100); }
+        function playWrong() { playTone(150, 'sawtooth', 0.3); triggerEarthquake(); }
+
+        // --- ALUR INPUT NAMA -> PILIH KARAKTER ---
+        function goToCharacterSelect() {
+            let input = document.getElementById('username-input').value.trim(); 
+            if(input === "") { alert("Silakan masukkan NAMA terlebih dahulu!"); playWrong(); return; } 
+            
+            username = input;
+            playClickSound(); initAudio(); 
+            goToPage('page-character');
+        }
+
+        function selectAvatar(type) {
+            playClickSound();
+            document.querySelectorAll('.avatar-btn').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('btn-' + type).classList.add('selected');
+            userAvatar = type;
+        }
+
+        function loginUser() { 
+            if(userAvatar === "") { alert("Silakan pilih KARAKTER terlebih dahulu!"); playWrong(); return; } 
+            
+            document.getElementById('display-username').innerText = username; 
+            document.getElementById('display-username-hud').innerText = username;
+            document.getElementById('display-avatar').src = (userAvatar === 'boy') ? "assets/boy.png" : "assets/girl.png";
+            
+            playClickSound(); requestFullScreen(); saveData(); goToPage('page-home'); 
+        }
+
+        // --- SISTEM HALAMAN DAN KEMUNCULAN KARAKTER BESAR ---
+        function goToPage(pageId) { 
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active')); 
+            document.getElementById(pageId).classList.add('active'); 
+            
+            // HUD Profil Kecil Kanan Atas
+            if(pageId === 'page-welcome' || pageId === 'page-character') {
+                document.getElementById('profile-container').style.display = "none";
+                document.getElementById('global-sound-btn').style.display = "none"; // Hide di welcome
+            } else {
+                document.getElementById('profile-container').style.display = "flex";
+                document.getElementById('global-sound-btn').style.display = "block"; // Show setelah masuk
+            }
+function switchTab(tabId) {
+    playClickSound();
+
+    // Reset semua tab button
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+    // Sembunyikan semua konten
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+        content.style.display = 'none';
+    });
+
+    // Aktifkan tombol yang dipilih
+    document.getElementById('btn-' + tabId).classList.add('active');
+
+    // Tampilkan konten yang sesuai
+    const activeContent = document.getElementById('content-' + tabId);
+    activeContent.classList.add('active');
+    activeContent.style.display = 'block';
+}
+            // Karakter Besar Kiri
+            if(pageId === 'page-welcome' || pageId === 'page-character' || pageId === 'page-menu') {
+                document.getElementById('global-character-container').style.display = "none";
+            } else {
+                document.getElementById('global-character-container').style.display = "flex";
+                document.getElementById('global-character-img').src = (userAvatar === 'boy') ? "assets/boy.png" : "assets/girl.png";
+            }
+
+            if(pageId.includes('exercise') || pageId.includes('level')) { showHUD(true); } else { showHUD(false); stopTimer(); } 
+        }
+
+        // --- SIMULATOR ---
+        const disasterData = {
+            gempa: { html: '<div style="display:flex; align-items:flex-end;"><div class="earth-block shaking"></div><div class="earth-block shaking" style="background:#2980b9;"></div></div>', cause: "<b>Science:</b> Caused by the sudden shifting of tectonic plates.", mitigation: "<b>Mitigation:</b> DROP, COVER, and HOLD ON!" },
+            tsunami: { html: `<div class="tsunami-wrapper" id="tsunami-wave"><div class="wave-crest"></div><div class="boat-container"><img src="assets/boat.png" alt="[Boat]" style="height:8cqh; object-fit:contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div style="display:none; font-size:6cqh; line-height:1;">⛵</div></div></div><div style="position:absolute; bottom:0; left:10%; width:80%; height:2cqh; background:#e67e22; z-index:4;"></div>`, cause: "<b>Science:</b> Triggered by an underwater earthquake displacing water.", mitigation: "<b>Mitigation:</b> If you feel a strong earthquake near the coast, evacuate to higher ground!" },
+            erupsi: { html: `<img src="assets/volcano.png" alt="[Volcano]" style="height:20cqh; position:absolute; bottom:3cqh; z-index:2; object-fit:contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><div class="mountain" style="display:none;"></div><div class="magma" id="magma-particle"></div>`, cause: "<b>Science:</b> Occurs when magma rises and bursts through the crust.", mitigation: "<b>Mitigation:</b> Wear masks, follow evacuation routes." }
+        };
+
+        function runSim(type, btn) {
+            document.querySelectorAll('.sim-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active');
+            document.getElementById('visual-area').innerHTML = disasterData[type].html;
+            document.getElementById('text-area').innerHTML = `<h4>${btn.innerText}</h4><p>${disasterData[type].cause}</p><hr style="margin:1cqh 0; border:0; border-top:.2cqh solid #ccc;"><p style="color:#fff;">${disasterData[type].mitigation}</p>`;
+            setTimeout(() => { if(type === 'tsunami') document.getElementById('tsunami-wave').classList.add('active'); if(type === 'erupsi') document.getElementById('magma-particle').classList.add('active'); }, 100);
+        }
+
+        // --- SISTEM DATA ---
+        function saveData() { localStorage.setItem('disasterAppSave', JSON.stringify({ name: username, pts: totalPoints, saves: saves, avatar: userAvatar })); updateMenuStatus(); }
+        function resetSave() { localStorage.removeItem('disasterAppSave'); location.reload(); }
+        function updateMenuStatus() { if(saves.lvl1) document.getElementById('s-lvl1').innerText = "✓ Cleared"; if(saves.lvl2) document.getElementById('s-lvl2').innerText = "✓ Cleared"; if(saves.lvl3) document.getElementById('s-lvl3').innerText = "✓ Cleared"; }
+        function triggerEarthquake() { const container = document.getElementById('main-container'); container.classList.remove('shake-effect'); void container.offsetWidth; container.classList.add('shake-effect'); }
+
+        // --- TIMER & UI ---
+        let timerInterval; let timeRemaining = 0;
+        function startTimer(seconds, onTimeout) { timeRemaining = seconds; document.getElementById('timer-display').innerText = timeRemaining + "s"; document.getElementById('timer-hud').style.display = 'block'; clearInterval(timerInterval); timerInterval = setInterval(() => { timeRemaining--; document.getElementById('timer-display').innerText = timeRemaining + "s"; if(timeRemaining <= 5) document.getElementById('timer-hud').style.background = "rgba(192, 57, 43, 0.9)"; if (timeRemaining <= 0) { clearInterval(timerInterval); onTimeout(); } }, 1000); }
+        function stopTimer() { clearInterval(timerInterval); document.getElementById('timer-hud').style.display = 'none'; document.getElementById('timer-hud').style.background = "rgba(255, 94, 87, 0.9)"; }
+        function requestFullScreen() { let elem = document.documentElement; if (elem.requestFullscreen) { elem.requestFullscreen(); } else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); } }
+        function updatePointsDisplay() { document.getElementById('display-points').innerText = totalPoints; let hud = document.getElementById('global-score-hud'); hud.style.transform = "scale(1.1)"; setTimeout(() => { hud.style.transform = "scale(1)"; }, 200); }
+        function showHUD(show) { document.getElementById('global-score-hud').style.display = show ? 'block' : 'none'; }
+        function endLevel(targetPage) { stopTimer(); saveData(); goToPage(targetPage); }
+        function switchTab(tabId) { playClickSound(); document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active')); document.getElementById('btn-' + tabId).classList.add('active'); document.getElementById('content-' + tabId).classList.add('active'); }
+        function generateCertificate() { let finalScore = Math.round((totalPoints / MAX_POINTS) * 100); if(finalScore < 0) finalScore = 0; if(finalScore > 100) finalScore = 100; document.getElementById('cert-display-name').innerText = username || "Student"; document.getElementById('cert-display-score').innerText = finalScore; let scoreEl = document.getElementById('cert-display-score'); if(finalScore >= 80) scoreEl.style.color = "#27ae60"; else if(finalScore >= 60) scoreEl.style.color = "#f39c12"; else scoreEl.style.color = "#c0392b"; goToPage('page-certificate'); }
+        function shuffle(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
+
+        // --- LEVEL 1 ---
+        const vocabData = [ { id: 1, eng: "Earthquake", ind: "Gempa" }, { id: 2, eng: "Eruption", ind: "Letusan" }, { id: 3, eng: "Magnitude", ind: "Skala" }, { id: 4, eng: "Evacuate", ind: "Evakuasi" }, { id: 5, eng: "Crust", ind: "Kerak" } ];
+        let selectedEng = null; let selectedInd = null; let matchedPairs = 0;
+        function startLevel1() { if(saves.lvl1) { alert("You already cleared this level!"); return; } goToPage('page-level-1'); document.getElementById('lvl1-done').style.display = 'none'; matchedPairs = 0; selectedEng = null; selectedInd = null; let engWords = shuffle([...vocabData]); let indWords = shuffle([...vocabData]); const colEng = document.getElementById('col-eng'); const colInd = document.getElementById('col-ind'); colEng.innerHTML = ''; colInd.innerHTML = ''; engWords.forEach(item => { let div = document.createElement('div'); div.className = 'match-item eng-item'; div.innerText = item.eng; div.dataset.id = item.id; div.onmouseenter = playHoverSound; div.onclick = () => selectItem(div, 'eng'); colEng.appendChild(div); }); indWords.forEach(item => { let div = document.createElement('div'); div.className = 'match-item ind-item'; div.innerText = item.ind; div.dataset.id = item.id; div.onmouseenter = playHoverSound; div.onclick = () => selectItem(div, 'ind'); colInd.appendChild(div); }); startTimer(45, () => { saves.lvl1 = true; playWrong(); document.getElementById('lvl1-msg').innerText = "⏰ Time's Up!"; document.getElementById('lvl1-msg').style.color = "#ff3f34"; document.getElementById('lvl1-done').style.display = 'block'; saveData(); }); }
+        function selectItem(element, type) { if (element.classList.contains('matched')) return; playClickSound(); if (type === 'eng') { document.querySelectorAll('.eng-item').forEach(el => el.classList.remove('selected')); element.classList.add('selected'); selectedEng = element; } else { document.querySelectorAll('.ind-item').forEach(el => el.classList.remove('selected')); element.classList.add('selected'); selectedInd = element; } if (selectedEng && selectedInd) { if (selectedEng.dataset.id === selectedInd.dataset.id) { playCorrect(); selectedEng.classList.add('matched'); selectedEng.classList.remove('selected'); selectedInd.classList.add('matched'); selectedInd.classList.remove('selected'); matchedPairs++; totalPoints += 10; updatePointsDisplay(); selectedEng = null; selectedInd = null; if (matchedPairs === 5) { stopTimer(); saves.lvl1 = true; saveData(); document.getElementById('lvl1-msg').innerText = "🎉 Level Cleared!"; document.getElementById('lvl1-msg').style.color = "#05c46b"; setTimeout(() => { document.getElementById('lvl1-done').style.display = 'block'; }, 500); } } else { playWrong(); setTimeout(() => { selectedEng.classList.remove('selected'); selectedInd.classList.remove('selected'); selectedEng = null; selectedInd = null; }, 400); } } }
+
+        // --- LEVEL 2 ---
+        const lvl2Data = [ { q: "A tsunami is caused by heavy rain.", a: false }, { q: "Tsunamis can travel at the speed of a jet plane.", a: true }, { q: "The wave gets shorter when it reaches shallow water.", a: false }, { q: "Every single underwater earthquake causes a tsunami.", a: false }, { q: "Moving to higher ground is the best way to survive.", a: true } ];
+        let lvl2Index = 0; let lvl2Score = 0;
+        function startLevel2() { if(saves.lvl2) { alert("You already cleared this level!"); return; } goToPage('page-level-2'); document.getElementById('lvl2-game-area').style.display = 'flex'; document.getElementById('lvl2-result').style.display = 'none'; lvl2Index = 0; lvl2Score = 0; loadLvl2Question(); startTimer(45, () => { saves.lvl2 = true; playWrong(); showLvl2Result("⏰ Time's Up!"); }); }
+        function loadLvl2Question() { document.getElementById('lvl2-question').innerText = lvl2Data[lvl2Index].q; }
+        function answerLvl2(answer) { playClickSound(); if (answer === lvl2Data[lvl2Index].a) { playCorrect(); lvl2Score++; totalPoints += 20; updatePointsDisplay(); } else { playWrong(); } lvl2Index++; if (lvl2Index < lvl2Data.length) { loadLvl2Question(); } else { stopTimer(); saves.lvl2 = true; showLvl2Result("🎉 Level Completed!"); } }
+        function showLvl2Result(msg) { saveData(); document.getElementById('lvl2-msg').innerText = msg; document.getElementById('lvl2-game-area').style.display = 'none'; document.getElementById('lvl2-result').style.display = 'block'; document.getElementById('lvl2-score').innerText = lvl2Score + " / 5"; }
+
+        // --- LEVEL 3 ---
+        const lvl3Data = [ { q: "What is a volcano?", options: ["A hill", "Mountain opening to molten rock", "Ocean trench"], ans: 1 }, { q: "What causes a volcanic eruption?", options: ["Heavy rain", "Strong wind", "Pressure building up"], ans: 2 }, { q: "What comes out during an eruption?", options: ["Gases, rocks, lava", "Clean water", "Snow and ice"], ans: 0 }, { q: "Which is NOT an effect of an eruption?", options: ["Mudslides", "Tsunami", "Hot ash flows"], ans: 1 }, { q: "What is the main idea of the text?", options: ["How to survive", "History of volcanoes", "Description of a volcano"], ans: 2 } ];
+        let lvl3Index = 0; let lvl3Score = 0;
+        function startLevel3() { if(saves.lvl3) { alert("You already cleared this level!"); return; } goToPage('page-level-3'); document.getElementById('lvl3-game-area').style.display = 'flex'; document.getElementById('lvl3-result').style.display = 'none'; lvl3Index = 0; lvl3Score = 0; loadLvl3Question(); startTimer(60, () => { saves.lvl3 = true; playWrong(); showLvl3Result("⏰ Time's Up!"); }); }
+        function loadLvl3Question() { let data = lvl3Data[lvl3Index]; document.getElementById('lvl3-question').innerText = data.q; const optsContainer = document.getElementById('lvl3-options'); optsContainer.innerHTML = ''; data.options.forEach((opt, index) => { let btn = document.createElement('button'); btn.className = 'option-btn'; btn.onmouseenter = playHoverSound; btn.innerText = String.fromCharCode(65 + index) + ". " + opt; btn.onclick = () => answerLvl3(index); optsContainer.appendChild(btn); }); }
+        function answerLvl3(selectedIndex) { playClickSound(); if (selectedIndex === lvl3Data[lvl3Index].ans) { playCorrect(); lvl3Score++; totalPoints += 30; updatePointsDisplay(); } else { playWrong(); } lvl3Index++; if (lvl3Index < lvl3Data.length) { loadLvl3Question(); } else { stopTimer(); saves.lvl3 = true; showLvl3Result("🎉 Level Completed!"); } }
+        function showLvl3Result(msg) { saveData(); document.getElementById('lvl3-msg').innerText = msg; document.getElementById('lvl3-game-area').style.display = 'none'; document.getElementById('lvl3-result').style.display = 'block'; document.getElementById('lvl3-score').innerText = lvl3Score + " / 5"; }
+
+        document.getElementById("username-input").addEventListener("keypress", function(event) { if (event.key === "Enter") { event.preventDefault(); goToCharacterSelect(); } });
+    </script>
+</body>
+</html>
