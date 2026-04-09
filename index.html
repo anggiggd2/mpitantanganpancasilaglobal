@@ -33,18 +33,27 @@
         @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
        #mpi-container {
-            background-color: transparent; 
+            /* Menampilkan kembali gambar latar Anda di dalam kotak 16:9 */
+            background: url('assets/latar.jpg') no-repeat center center;
+            background-size: cover;
+            
             position: relative;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
-            width: 100vw;  /* Memaksa lebar memenuhi 100% layar */
-            height: 100vh; /* Memaksa tinggi memenuhi 100% layar */
-            /* border-radius dan aspect-ratio dihapus agar tidak ada bingkai */
-        }
+            overflow: hidden;
 
-        @media (max-aspect-ratio: 16/9) { #mpi-container { width: 100vw; height: 56.25vw; border-radius: 0; } }
-        @media (min-aspect-ratio: 16/9) { #mpi-container { height: 100vh; width: 177.78vh; border-radius: 0; } }
+            /* Rumus Sakti Mengunci Rasio Layar 16:9 */
+            aspect-ratio: 16 / 9;
+            width: 100vw;
+            max-width: calc(100vh * (16 / 9));
+            height: 100vh;
+            max-height: calc(100vw * (9 / 16));
+            
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            
+            /* SANGAT PENTING: Menjadikan kotak ini sebagai patokan ukuran otomatis */
+            container-type: size; 
+        }
 
         .page { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; flex-direction: column; z-index: 1; background: transparent;}
         .page.active { display: flex; animation: fadeScale 0.5s ease forwards; }
@@ -226,99 +235,16 @@
         @media screen and (max-width: 768px) {
             
             /* 1. Paksa body dan container agar pas dengan layar HP */
-            body, html {
-                height: 100%;
-                overflow-x: hidden; /* Mencegah layar bisa digeser ke kanan/kiri */
-            }
-
-            #mpi-container {
-                width: 100vw !important;
-                height: 100vh !important;
-                min-height: 100vh !important;
-                border-radius: 0 !important;
-                aspect-ratio: auto !important; /* Mematikan paksaan rasio 16:9 */
-                display: flex !important;
-                flex-direction: column !important;
-            }
-
-            /* 2. Pastikan halaman materi bisa di-scroll ke bawah jika teksnya panjang */
-            .page {
-                width: 100% !important;
-                height: 100% !important;
-                overflow-y: auto !important; /* KUNCI PENTING: Buka kunci scroll vertikal */
-                justify-content: flex-start !important; 
-            }
-
-            /* Halaman cover dan menu tetap di tengah */
-            #page-cover, #page-guide, #page-menu {
-                justify-content: center !important;
-                padding: 20px !important;
-            }
-
-            /* 3. Area putih materi menyesuaikan ukuran layar */
-            .sub-page-area {
-                width: 100% !important;
-                height: auto !important;
-                min-height: 100% !important;
-                padding: 20px 15px !important;
-                margin: 0 !important;
-                border-radius: 0 !important;
-            }
-
-            /* 4. Mengecilkan ukuran teks judul agar tidak meluber */
-            .judul-3d, .cover-title {
-                font-size: 1.8rem !important;
-                line-height: 1.3 !important;
-                word-wrap: break-word !important; /* Paksa teks turun jika kepanjangan */
-            }
-            .subjudul-3d, .cover-subtitle {
-                font-size: 1.1rem !important;
-            }
-            h2 { font-size: 1.4rem !important; }
-            p { font-size: 0.95rem !important; line-height: 1.5 !important; }
-
-            /* 5. Menyesuaikan Tombol agar lebih mudah ditekan di HP */
-            button {
-                width: 100% !important; /* Tombol memanjang penuh di HP */
-                margin-bottom: 10px !important;
-                padding: 12px !important;
-                font-size: 1rem !important;
-                white-space: normal !important;
-            }
-
-            /* Tombol Navigasi Bawah (Prev/Next) bersebelahan */
-            .nav-buttons {
-                display: flex !important;
-                flex-direction: row !important;
-                gap: 10px !important;
-            }
-            .nav-buttons button {
-                margin-bottom: 0 !important;
-            }
-
-            /* Tombol musik diam di pojok, jangan ikut memanjang */
-            #btn-music {
-                width: auto !important;
-                top: 10px !important;
-                right: 10px !important;
-                padding: 8px 12px !important;
-                font-size: 0.8rem !important;
-            }
-
-            /* 6. Memastikan gambar / ilustrasi tidak mendobrak layar */
-            img {
-                max-width: 100% !important;
-                height: auto !important;
-                object-fit: contain !important;
-            }
-            
-            /* 7. Grid / Kotak Menu disusun ke bawah, bukan ke samping */
-            .menu-grid {
-                display: flex !important;
-                flex-direction: column !important;
-                gap: 15px !important;
-                width: 100% !important;
-            }
+       body, html {
+            margin: 0; 
+            padding: 0;
+            width: 100%; 
+            height: 100%;
+            background-color: #111111; /* Latar luar layar menjadi hitam */
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            overflow: hidden; /* Mencegah layar tergeser */
         }
     </style>
 </head>
